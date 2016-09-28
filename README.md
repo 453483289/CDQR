@@ -4,6 +4,7 @@ CDQR — Cold Disk Quick Response tool by Alan Orlikoski
 
 ## Linux Version - Beta
 *  This version assumes Plaso is installed on the Linux host and is in the path to be called from anywhere
+*  Assumes Python3 is installed
 
 ## What is CDQR?
 The CDQR tool uses Plaso to parse disk images with specific parsers and create easy to analyze custom reports. The parsers were chosen based on my experience and triaging best practices and the custom reports group like items together to make analysis easier. The design came from the Live Response Model of investigating the important artifacts first. This is meant to be a starting point for investigations, not the complete investigation.
