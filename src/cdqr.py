@@ -1,9 +1,9 @@
-#!python3
+#!/usr/bin/python3
 import io, os, sys, argparse, subprocess, csv, time, datetime, re, multiprocessing, requests, gzip, shutil
 ###############################################################################
 # Created by: Alan Orlikoski
 # Version Info
-cdqr_version = "CDQR Version: 2.02"
+cdqr_version = "CDQR Version: Linux 2.02"
 #
 # What's New
 #  Ability to parse Mac images
@@ -31,8 +31,8 @@ default_parser = "win"
 
 
 # Plaso Program Locations (default)
-log2timeline_location = r"plaso\log2timeline.exe"
-psort_location = r"plaso\psort.exe"
+log2timeline_location = r"log2timeline.py"
+psort_location = r"psort.py"
 
 
 # Global Variables
@@ -125,21 +125,21 @@ def status_marker(myproc):
 
 def create_reports(dst_loc, csv_file):
 	# Create report directory and file names
-	rpt_dir_name = dst_loc+"\\Reports"
-	rpt_evt_name = rpt_dir_name+"\\Event Log Report.csv"
-	rpt_fsfs_name = rpt_dir_name+"\\File System Report.csv"
-	rpt_fsmft_name = rpt_dir_name+"\\MFT Report.csv"
-	rpt_fsusnjrnl_name = rpt_dir_name+"\\UsnJrnl Report.csv"
-	rpt_ih_name = rpt_dir_name+"\\Internet History Report.csv"
-	rpt_pf_name = rpt_dir_name+"\\Prefetch Report.csv"
-	rpt_reg_name = rpt_dir_name+"\\Registry Report.csv"
-	rpt_st_name = rpt_dir_name+"\\Scheduled Tasks Report.csv"
-	rpt_per_name = rpt_dir_name+"\\Persistence Report.csv"
-	rpt_si_name = rpt_dir_name+"\\System Information Report.csv"
-	rpt_av_name = rpt_dir_name+"\\AntiVirus Report.csv"
-	rpt_fw_name = rpt_dir_name+"\\Firewall Report.csv"
-	rpt_mac_name = rpt_dir_name+"\\Mac Report.csv"
-	rpt_lin_name = rpt_dir_name+"\\Linux Report.csv"
+	rpt_dir_name = dst_loc+"/Reports"
+	rpt_evt_name = rpt_dir_name+"/Event Log Report.csv"
+	rpt_fsfs_name = rpt_dir_name+"/File System Report.csv"
+	rpt_fsmft_name = rpt_dir_name+"/MFT Report.csv"
+	rpt_fsusnjrnl_name = rpt_dir_name+"/UsnJrnl Report.csv"
+	rpt_ih_name = rpt_dir_name+"/Internet History Report.csv"
+	rpt_pf_name = rpt_dir_name+"/Prefetch Report.csv"
+	rpt_reg_name = rpt_dir_name+"/Registry Report.csv"
+	rpt_st_name = rpt_dir_name+"/Scheduled Tasks Report.csv"
+	rpt_per_name = rpt_dir_name+"/Persistence Report.csv"
+	rpt_si_name = rpt_dir_name+"/System Information Report.csv"
+	rpt_av_name = rpt_dir_name+"/AntiVirus Report.csv"
+	rpt_fw_name = rpt_dir_name+"/Firewall Report.csv"
+	rpt_mac_name = rpt_dir_name+"/Mac Report.csv"
+	rpt_lin_name = rpt_dir_name+"/Linux Report.csv"
 
 	# RC1 search strings for each report (windows)
 	rpt_evt_search = re.compile(r'winevt,|winevtx,')
@@ -363,8 +363,8 @@ print(cdqr_version)
 # Parsing the input from the command line and building log2timeline command
 if args:
 	# Validate log2timeline.exe and psort.exe locations
-	if not os.path.isfile(log2timeline_location):
-		log2timeline_location,psort_location = query_plaso_location()
+	#if not os.path.isfile(log2timeline_location):
+	#	log2timeline_location,psort_location = query_plaso_location()
 	# Default log2timeline command
 	command1 = [log2timeline_location,"-p","--partition","all","--vss_stores","all"]
 
@@ -451,17 +451,16 @@ if args:
 	log_list.append("Destination Folder: "+dst_loc+"\n")
 
 # Create DB Filename
-
-db_file = dst_loc+"\\"+src_loc.split('\\')[-1]+".db"
-if db_file == dst_loc+"\\.db":
-	db_file = dst_loc+"\\"+"mounted_image.db"
+db_file = dst_loc+"/"+src_loc.split('/')[-1]+".db"
+if db_file == dst_loc+"/.db":
+	db_file = dst_loc+"/"+"mounted_image.db"
 print("Database File: "+ db_file)
 log_list.append("Database File: "+db_file+"\n")
 
 # Create SuperTimeline filename
-csv_file = dst_loc+"\\"+src_loc.split('\\')[-1]+".SuperTimeline.csv"
-if csv_file == dst_loc+"\\.SuperTimeline.csv":
-	csv_file = dst_loc+"\\"+"mounted_image.SuperTimeline.csv"
+csv_file = dst_loc+"/"+src_loc.split('/')[-1]+".SuperTimeline.csv"
+if csv_file == dst_loc+"/.SuperTimeline.csv":
+	csv_file = dst_loc+"/"+"mounted_image.SuperTimeline.csv"
 print("SuperTimeline CSV File: "+ csv_file)
 
 # Finalize the log2timeline command with DB file and source data file location
@@ -473,9 +472,9 @@ print("\n")
 log_list.append("")
 
 # Open Log Files
-logfilename = dst_loc+"\\"+src_loc.split('\\')[-1]+".log"
-if logfilename == dst_loc+"\\.log":
-	logfilename = dst_loc+"\\"+"mounted_image.log"
+logfilename = dst_loc+"/"+src_loc.split('\\')[-1]+".log"
+if logfilename == dst_loc+"/.log":
+	logfilename = dst_loc+"/"+"mounted_image.log"
 
 if os.path.isfile(logfilename):
 	os.remove(logfilename)
@@ -509,7 +508,7 @@ if os.path.isfile(csv_file):
 			print("Removing the existing file: "+csv_file)
 			mylogfile.writelines("Removing the existing file: "+csv_file+"\n")
 			os.remove(csv_file)
-			rpt_dir_name = dst_loc+"\\Reports"
+			rpt_dir_name = dst_loc+"/Reports"
 			if os.path.isdir(rpt_dir_name):
 				print("Removing the existing report directory: "+rpt_dir_name)
 				mylogfile.writelines("Removing the existing file: "+rpt_dir_name+"\n")
