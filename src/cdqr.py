@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-import io, os, sys, argparse, subprocess, csv, time, datetime, re, multiprocessing, requests, gzip, shutil
+import io, os, sys, argparse, subprocess, csv, time, datetime, re, multiprocessing, gzip, shutil, zipfile
 ###############################################################################
 # Created by: Alan Orlikoski
 # Version Info
@@ -47,6 +47,7 @@ duration02 = end_dt - start_dt
 duration03 = end_dt - start_dt
 create_db = True
 create_st = True
+global_elk_index = "cdqr-"
 
 # Compatible Plaso versions
 p_compat = ["1.3","1.4"]
@@ -290,6 +291,37 @@ def plaso_version(log2timeline_location):
     pver = ".".join(str(err).split(" ")[-1].split(".")[0:2])
     return(pver)
 
+def output_elasticsearch(srcfilename,casename):
+    # Run psort against plaso db file to output to an ELK server running on the localhost
+    print("Exporting results to the ELK server")
+    mylogfile.writelines("Exporting results to the ELK server\n")
+
+    # Create command to run
+    command = [psort_location,"-o","elastic", srcfilename,"--case_name",global_elk_index+casename]
+    
+    print("\""+"\" \"".join(command)+"\"")
+    mylogfile.writelines("\""+"\" \"".join(command)+"\""+"\n")
+
+    # Execute Command
+    status_marker(subprocess.Popen(command,stdout=mylogfile,stderr=mylogfile))
+    
+    print("All entries have been inserted into database with case: "+global_elk_index+casename)
+    mylogfile.writelines("All entries have been inserted into database with case: "+global_elk_index+casename+"\n")
+
+def unzip_source(src_loc_tmp):
+    try:
+        outputzipfolder = src_loc_tmp[0:-4]
+        print("Attempting to extract .zip file source file: "+src_loc_tmp)
+        log_list.append("Attempting to extract .zip file source file: "+src_loc_tmp+"\n")
+        with zipfile.ZipFile(src_loc_tmp,"r") as zip_ref:
+            zip_ref.extractall(outputzipfolder)
+        print("All files extracted to folder: "+outputzipfolder)
+        log_list.append("All files extracted to folder: "+outputzipfolder+"\n")
+        return outputzipfolder
+    except:
+        print("Unable to extract file: "+src_loc_tmp)
+        log_list.append("Unable to extract file: "+src_loc_tmp+"\n")
+
 def create_export(srcfilename):
     # Create Output filenames
     dstrawfilename = srcfilename[:-3]+"_export.json"
@@ -311,7 +343,7 @@ def create_export(srcfilename):
     mylogfile.writelines("\""+"\" \"".join(command)+"\""+"\n")
 
     # Execute Command
-    subprocess.call(command,stdout=mylogfile,stderr=mylogfile)
+    status_marker(subprocess.Popen(command,stdout=mylogfile,stderr=mylogfile))
     
     print("Json line delimited file created")
     mylogfile.writelines("Json line delimited file created"+"\n")
@@ -352,6 +384,8 @@ parser.add_argument('-p','--parser', nargs='?',help='Choose parser to use.  If n
 parser.add_argument('--hash', action='store_true', default=False, help='Hash all the files as part of the processing of the image')
 parser.add_argument('--max_cpu', action='store_true', default=False, help='Use the maximum number of cpu cores to process the image')
 parser.add_argument('--export', action='store_true' , help='Creates gzipped, line delimited json export file')
+parser.add_argument('--elk', nargs='?',help='Outputs to elasticsearch database stored on localhost (127.0.0.1)')
+parser.add_argument('-z',action='store_true', default=False, help='Indicates the input file is a zip file and needs to be decompressed')
 parser.add_argument('-v','--version', action='version', version=cdqr_version)
 
 args=parser.parse_args()
@@ -435,10 +469,18 @@ if args:
         print("ERROR: \""+src_loc+"\" cannot be found by the system.  Please verify command.")
         print("Exiting...")
         sys.exit(1)
+    
+    if args.z:
+        src_loc = unzip_source(src_loc)
+
+    if src_loc[-4:].lower() == ".zip":
+        if query_yes_no("\n"+src_loc+" appears to be a zip file.  Would you like CDQR to unzip it and process the contents?","yes"):
+            src_loc = unzip_source(src_loc)
+
     print("Source data: "+src_loc)
     log_list.append("Source data: "+src_loc+"\n")
 
-# Set source location/file
+# Set destination location/file
     dst_loc = args.dst_location.strip('\\')
     if os.path.exists(dst_loc):
         if not query_yes_no("\n"+dst_loc+" already exists.  Would you like to use that directory anyway?","yes"):
@@ -535,53 +577,56 @@ if create_db:
     print("Parsing duration was: "+str(duration01))
     mylogfile.writelines("Parsing duration was: "+str(duration01)+"\n")
 
-# This processes the .db file creates the SuperTimeline
-if create_st:
-    command2 = [psort_location,"-o","l2tcsv",db_file,"-w",csv_file]
-    # Create SuperTimeline
-    start_dt = datetime.datetime.now()
-    print("\nCreating the SuperTimeline CSV file")
-    mylogfile.writelines("\nCreating the SuperTimeline CSV file"+"\n")
-    print("\""+"\" \"".join(command2)+"\"")
-    mylogfile.writelines("\""+"\" \"".join(command2)+"\""+"\n")
-    ######################  Psort Command Execute  ##########################
-    status_marker(subprocess.Popen(command2,stdout=mylogfile,stderr=mylogfile))
-    print("SuperTimeline CSV file is created")
-    mylogfile.writelines("SuperTimeline CSV file is created\n")
+if args.elk:
+    output_elasticsearch(db_file,args.elk)
+else:
+    # This processes the .db file creates the SuperTimeline
+    if create_st:
+        command2 = [psort_location,"-o","l2tcsv",db_file,"-w",csv_file]
+        # Create SuperTimeline
+        start_dt = datetime.datetime.now()
+        print("\nCreating the SuperTimeline CSV file")
+        mylogfile.writelines("\nCreating the SuperTimeline CSV file"+"\n")
+        print("\""+"\" \"".join(command2)+"\"")
+        mylogfile.writelines("\""+"\" \"".join(command2)+"\""+"\n")
+        ######################  Psort Command Execute  ##########################
+        status_marker(subprocess.Popen(command2,stdout=mylogfile,stderr=mylogfile))
+        print("SuperTimeline CSV file is created")
+        mylogfile.writelines("SuperTimeline CSV file is created\n")
 
-# Create individual reports
-print("\nCreating the individual reports")
-mylogfile.writelines("\nCreating the individual reports\n")
-create_reports(dst_loc,csv_file)
+    # Create individual reports
+    print("\nCreating the individual reports")
+    mylogfile.writelines("\nCreating the individual reports\n")
+    create_reports(dst_loc,csv_file)
 
-print("All reporting complete")
-mylogfile.writelines("All reporting complete\n")
-
-end_dt = datetime.datetime.now()
-duration02 = end_dt - start_dt
-print("Reporting ended at: "+str(end_dt))
-print("Reporting  duration was: "+str(duration02))
-mylogfile.writelines("Reporting ended at: "+str(end_dt)+"\n")
-mylogfile.writelines("Reporting duration was: "+str(duration02)+"\n")
-
-start_dt = datetime.datetime.now()
-
-# Export Data (if selected)
-if args.export:
-    print("\nProcess to create export document started")
-    mylogfile.writelines("\nProcess to create export document started"+"\n")
-    # Create the file for export 
-    exportfname = create_export(db_file)
-    print("Process to create export document complete")
-    mylogfile.writelines("Process to create export document complete"+"\n")
+    print("All reporting complete")
+    mylogfile.writelines("All reporting complete\n")
 
     end_dt = datetime.datetime.now()
-    duration03 = end_dt - start_dt
-    print("\nTotal  duration was: "+str(duration01+duration02+duration03))
-    mylogfile.writelines("\nTotal duration was: "+str(duration01+duration02+duration03)+"\n")
-else:
-    print("\nTotal  duration was: "+str(duration01+duration02))
-    mylogfile.writelines("\nTotal duration was: "+str(duration01+duration02)+"\n")
+    duration02 = end_dt - start_dt
+    print("Reporting ended at: "+str(end_dt))
+    print("Reporting  duration was: "+str(duration02))
+    mylogfile.writelines("Reporting ended at: "+str(end_dt)+"\n")
+    mylogfile.writelines("Reporting duration was: "+str(duration02)+"\n")
+
+    start_dt = datetime.datetime.now()
+    
+    # Export Data (if selected)
+    if args.export:
+        print("\nProcess to create export document started")
+        mylogfile.writelines("\nProcess to create export document started"+"\n")
+        # Create the file for export 
+        exportfname = create_export(db_file)
+        print("Process to create export document complete")
+        mylogfile.writelines("Process to create export document complete"+"\n")
+
+        end_dt = datetime.datetime.now()
+        duration03 = end_dt - start_dt
+        print("\nTotal  duration was: "+str(duration01+duration02+duration03))
+        mylogfile.writelines("\nTotal duration was: "+str(duration01+duration02+duration03)+"\n")
+    else:
+        print("\nTotal  duration was: "+str(duration01+duration02))
+        mylogfile.writelines("\nTotal duration was: "+str(duration01+duration02)+"\n")
 
 # Closing log file
 mylogfile.close()
