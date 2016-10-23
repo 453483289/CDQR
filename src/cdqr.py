@@ -3,7 +3,7 @@ import io, os, sys, argparse, subprocess, csv, time, datetime, re, multiprocessi
 ###############################################################################
 # Created by: Alan Orlikoski
 # Version Info
-cdqr_version = "CDQR Version: Linux 2.02"
+cdqr_version = "CDQR Version: Linux 2.02 with Elasticsearch"
 #
 # What's New
 #  Ability to parse Mac images
@@ -48,6 +48,7 @@ duration03 = end_dt - start_dt
 create_db = True
 create_st = True
 global_elk_index = "cdqr-"
+unzipped_file = False
 
 # Compatible Plaso versions
 p_compat = ["1.3","1.4"]
@@ -381,7 +382,7 @@ parser = argparse.ArgumentParser(description='Cold Disk Quick Response Tool (CDQ
 parser.add_argument('src_location',nargs=1,help='Source File location: Y:\\Case\\Tag009\\sample.E01')
 parser.add_argument('dst_location',nargs='?',default='Results',help='Destination Folder location. If nothing is supplied then the default is \'Results\'')
 parser.add_argument('-p','--parser', nargs='?',help='Choose parser to use.  If nothing chosen then \'win\' is used.  Options are: '+', '.join(parser_list))
-parser.add_argument('--hash', action='store_true', default=False, help='Hash all the files as part of the processing of the image')
+parser.add_argument('--hash', action='store_false', default=True, help='Do not hash all the files as part of the processing of the image')
 parser.add_argument('--max_cpu', action='store_true', default=False, help='Use the maximum number of cpu cores to process the image')
 parser.add_argument('--export', action='store_true' , help='Creates gzipped, line delimited json export file')
 parser.add_argument('--elk', nargs='?',help='Outputs to elasticsearch database stored on localhost (127.0.0.1)')
@@ -471,10 +472,12 @@ if args:
         sys.exit(1)
     
     if args.z:
+        unzipped_file = True
         src_loc = unzip_source(src_loc)
 
     if src_loc[-4:].lower() == ".zip":
         if query_yes_no("\n"+src_loc+" appears to be a zip file.  Would you like CDQR to unzip it and process the contents?","yes"):
+            unzipped_file = True
             src_loc = unzip_source(src_loc)
 
     print("Source data: "+src_loc)
@@ -578,7 +581,17 @@ if create_db:
     mylogfile.writelines("Parsing duration was: "+str(duration01)+"\n")
 
 if args.elk:
+    start_dt = datetime.datetime.now()
+    print("\nProcess to export to ELK started")
+    mylogfile.writelines("\nProcess to export to ELK started"+"\n")
     output_elasticsearch(db_file,args.elk)
+    end_dt = datetime.datetime.now()
+    duration03 = end_dt - start_dt
+    print("\nProcess to export to ELK completed")
+    mylogfile.writelines("\nProcess to export to ELK completed"+"\n")
+    print("ELK export process duration was: "+str(duration03))
+    mylogfile.writelines("ELK export process duration was: "+str(duration03)+"\n")
+    
 else:
     # This processes the .db file creates the SuperTimeline
     if create_st:
@@ -622,11 +635,18 @@ else:
 
         end_dt = datetime.datetime.now()
         duration03 = end_dt - start_dt
-        print("\nTotal  duration was: "+str(duration01+duration02+duration03))
-        mylogfile.writelines("\nTotal duration was: "+str(duration01+duration02+duration03)+"\n")
-    else:
-        print("\nTotal  duration was: "+str(duration01+duration02))
-        mylogfile.writelines("\nTotal duration was: "+str(duration01+duration02)+"\n")
+        print("Creating export document process duration was: "+str(duration03))
+        mylogfile.writelines("Creating export document process duration was: "+str(duration03)+"\n")
 
-# Closing log file
+
+
+# Closing log file and cleaning up
+if unzipped_file:
+    print("\nRemoving uncompressed files in directory: "+src_loc)
+    mylogfile.writelines("\nRemoving uncompressed files in directory: "+src_loc+"\n")
+    shutil.rmtree(src_loc)
+
+print("\nTotal  duration was: "+str(duration01+duration02+duration03))
+mylogfile.writelines("\nTotal duration was: "+str(duration01+duration02+duration03)+"\n")
 mylogfile.close()
+
