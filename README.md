@@ -2,9 +2,9 @@
 
 CDQR — Cold Disk Quick Response tool by Alan Orlikoski
 
-## Linux Version - Beta
+## CyLR CDQR Forensic VM (CCF-VM) version
 *  This version assumes Plaso is installed on the Linux host and is in the path to be called from anywhere
-*  Assumes Python3 is installed
+*  Assumes Plaso 1.4, Python3, and Efetch Elasticsearch output module: https://github.com/maurermj08/efetch are installed
 
 ## What is CDQR?
 The CDQR tool uses Plaso to parse disk images with specific parsers and create easy to analyze custom reports. The parsers were chosen based on my experience and triaging best practices and the custom reports group like items together to make analysis easier. The design came from the Live Response Model of investigating the important artifacts first. This is meant to be a starting point for investigations, not the complete investigation.
@@ -26,39 +26,24 @@ It creates up to 14 Reports (.csv files) based on triaging best practices and th
       ```
 
 ## What's New
-*  Ability to parse Mac images
-*  Ability to parse Linux images
-*  14 Reports for DATT:  
-      ```
-      Event Logs, File System, MFT, UsnJrnl, Internet History, Prefetch, Registry, Scheduled Tasks, Persistence, System Information, AntiVirus, Firewall, Mac, and Linux
-      ```
-*  12 Reports for Win:  
-      ```
-      Event Logs, File System, MFT, UsnJrnl, Internet History, Prefetch, Registry, Scheduled Tasks, Persistence, System Information, AntiVirus, Firewall
-      ```
-*   7 Reports for Mac and Lin:  
-      ```
-      File System, Internet History, System Information, AntiVirus, Firewall, Mac, and Linux
-      ```
-*  Improved the way existing log files and results directories are handled
-*  Ability to create an export file
+*  Elasticsearch support
+*  Multiple improvement to the logged and on-screen output
+*  Now supports .zip file source input detection and handling
+*  Improvements to support the CCF-VM release
 
 ## Fixes
-* Fixed the --export function
+* Various improvements
 
 ## Known Bugs
 * The Plaso 1.4 MFT parser is not functioning [Plaso Error #556](https://github.com/log2timeline/plaso/issues/556) for disk images but filestat and usrjrnl are working fine.  This will be corrected once Plaso 1.4 is updated.
+* No validation if plaso is installed
 
 ## Important Notes
-* Make sure account has permissions to create files and directories when running cdqr.exe (when in doubt, run as administrator)
+* Make sure account has permissions to create files and directories when running cdqr.py (when in doubt, run as administrator)
 
 ## SYNOPSIS
 
-Windows 64-bit binary
-```
-cdqr.exe [-h] [-p [PARSER]] [--hash] [--max_cpu] [--export] [-v : --version]
-```
-Python 3.4
+Python 3.4 (or higher)
 ```
 cdqr.py [-h] [-p [PARSER]] [--hash] [--max_cpu] [--export] [-v : --version]  
 ```
@@ -88,9 +73,11 @@ This program uses [Plaso](https://github.com/log2timeline/plaso/wiki) and a stre
 
 * `-h` , `--help` — Show this help message and exit.
 * `-p [parser]` , `--parser [parser]` — Choose parser to use. If nothing is chosen then `win` is used.
-* `--hash` — Hash all the files as part of the processing of the image.
+* `--hash` — Do not hash all the files as part of the processing of the image.
 * `--max_cpu` — Use the same number of workers as cpu cores
 * `--export` — Creates gzipped, line delimited json export file
+* `--elk [ELK]` — Outputs to elasticsearch database stored on localhost (127.0.0.1)
+* `-z` — Indicates the input file is a zip file and needs to be decompressed
 * `-v : --version` — Show version
 
 
@@ -148,19 +135,21 @@ There are four available parsers for CDQR: `datt` , `win` , `lin` , and `mac` an
 cdqr.py c:\mydiskimage.vmdk myresults
 ```
 ```
-cdqr.exe -p win c:\images\badlaptop.e01
+cdqr.py -p win c:\images\badlaptop.e01
 ```
 ```
-cdqr.exe -p datt --max_cpu C:\artifacts\tag009
+cdqr.py -p datt --max_cpu C:\artifacts\tag009
 ```
 ```
-cdqr.exe -p datt --max_cpu C:\artifacts\tag009\$MFT --export
+cdqr.py -p datt --max_cpu C:\artifacts\tag009\$MFT --export
 ```
 
-## Linux Plaso Install
-Run these commands to install lastest stable version of Plaso on Ubuntu
+## Plaso and Elasticsearch Output Module Install
+Run these commands to install lastest stable version of Plaso on Ubuntu (NOTE: This version must be used with Plaso 1.4 and https://github.com/maurermj08/efetch)
 * sudo add-apt-repository ppa:gift/stable
 * sudo apt-get install python-plaso
+* wget https://raw.githubusercontent.com/maurermj08/log2timeline_kibana/master/output/elastic.py
+* sudo cp elastic.py /usr/lib/python2.7/dist-packages/plaso/output/elastic.py
 
 ## AUTHOR
 
